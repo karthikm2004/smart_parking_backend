@@ -5,6 +5,7 @@ const multer = require('../Middlewares/multerMiddleware')
 const userController = require('../Controllers/userController')
 const parkingController = require('../Controllers/addParkingController')
 const bookingController = require('../Controllers/bookingController')
+const paymentController = require("../Controllers/razorpayPaymentController");
 
 const router = express.Router()
 
@@ -35,6 +36,7 @@ router.put('/cancel-booking/:bookingId', JWT, bookingController.cancelBooking)
 router.get('/parking-bookings/:parkingId', JWT, bookingController.getParkingBookings)
 router.put('/user-profile-update',JWT,userController.updateProfile)
 router.put('/user-password-update',JWT,userController.updatePassword)
+router.post("/create-payment-order",JWT,paymentController.createOrder);
 
 // owner/admin slot block
 router.post('/toggle-block-slot/:parkingId', JWT, bookingController.toggleBlockSlot)

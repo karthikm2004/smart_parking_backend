@@ -1,5 +1,7 @@
 const bookingModel = require('../Models/bookingModel')
 const addparkingModel = require("../Models/addParkingModel");
+const razorpay = require("../Razorpay config/razorpay");
+const crypto = require("crypto");
 
 
 // USER
@@ -16,8 +18,40 @@ exports.createBooking = async (req, res) => {
             endTime,
             vehicleNumber,
             vehicleType,
-            totalPrice
+            totalPrice,
+            razorpayOrderId,
+            razorpayPaymentId,
+            razorpaySignature
         } = req.body;
+
+        if (!razorpayOrderId || !razorpayPaymentId || !razorpaySignature) {
+            return res.status(400).json({
+                message: "Payment verification details are required"
+            });
+        }
+
+        const expectedSignature = crypto
+            .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
+            .update(`${razorpayOrderId}|${razorpayPaymentId}`)
+            .digest("hex");
+
+        if (expectedSignature !== razorpaySignature) {
+            return res.status(400).json({
+                message: "Payment verification failed"
+            });
+        }
+
+        const razorpayOrder = await razorpay.orders.fetch(razorpayOrderId);
+        const razorpayPayment = await razorpay.payments.fetch(razorpayPaymentId);
+
+        if (
+            razorpayOrder.amount !== Math.round(Number(totalPrice) * 100) ||
+            !["authorized", "captured"].includes(razorpayPayment.status)
+        ) {
+            return res.status(400).json({
+                message: "Payment could not be verified or the amount does not match"
+            });
+        }
 
         // check if slot is already booked for this parking lot on this date
         const existingBooking = await bookingModel.findOne({
